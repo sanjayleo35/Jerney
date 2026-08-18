@@ -24,5 +24,10 @@ output "region" {
   value       = var.aws_region
 }
 
+output "configure_kubectl" {
+  description = "Run this command to configure kubectl"
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+}
+
 # Use this command to configure kubectl after apply:
 # aws eks update-kubeconfig --region <region> --name <cluster_name>

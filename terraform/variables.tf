@@ -8,6 +8,11 @@ variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "The environment variable must be one of: dev, staging, prod."
+  }
 }
 
 variable "cluster_name" {
@@ -19,7 +24,7 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version for EKS"
   type        = string
-  default     = "1.32"
+  default     = "1.34"
 }
 
 variable "vpc_cidr" {
