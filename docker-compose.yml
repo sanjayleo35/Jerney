@@ -45,9 +45,6 @@ services:
     # Security: do not run as root (already in Dockerfile, but enforced here too)
     security_opt:
       - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
 
   # ---- Frontend (Nginx + React) ----
   frontend:
