@@ -405,6 +405,4 @@ spec:
       ports:
         - port: 5000
           protocol: TCP
-metadata:
-  labels:
-    updated-by: argocd-test
+
