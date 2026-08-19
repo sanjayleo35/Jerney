@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/sanjayleo35/Jerney.git'
-    targetRevision: HEAD
+    targetRevision: devops
     path: k8s
   destination:
     server: 'https://kubernetes.default.svc'
