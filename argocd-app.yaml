@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jerney-app
+  namespace: argo-cd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/sanjayleo35/Jerney.git'
+    targetRevision: main       # Target branch
+    path: k8s                  # Path to directory containing jerney.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: jerney          # Target deployment namespace
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
