@@ -2,6 +2,9 @@
 
 Jerney is a multi-service modern microservices blogging platform deployed on **AWS EKS (Elastic Kubernetes Service)** using **Terraform** for Infrastructure as Code (IaC), **Docker** & **GitHub Container Registry (GHCR)** for image management, and **Argo CD** for declarative GitOps continuous deployment.
 
+> [!IMPORTANT]
+> **Branch Execution Note:** Please execute the deployment steps using the **`devops`** branch. The code examples, line references, and inline comment configurations provided throughout this README are tailored specifically to the `devops` branch workflows.
+
 ---
 
 ## 🛠️ Architecture & Tech Stack
