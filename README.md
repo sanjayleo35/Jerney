@@ -1,180 +1,161 @@
-# 🛤️ Jerney — Blog Platform
+# 🚀 Jerney — Production DevSecOps & GitOps Project
 
-A Gen-Z vibe blog platform built with a 3-tier architecture — React frontend, Node.js backend, and PostgreSQL database.
-
-![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-![Tech Stack](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
-![Tech Stack](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)
+Jerney is a multi-service modern microservices blogging platform deployed on **AWS EKS (Elastic Kubernetes Service)** using **Terraform** for Infrastructure as Code (IaC), **Docker** & **GitHub Container Registry (GHCR)** for image management, and **Argo CD** for declarative GitOps continuous deployment.
 
 ---
 
-> [!IMPORTANT]
-> **Looking for the full DevSecOps implementation?**
-> Switch to the [`devops`](../../tree/devops) branch for Docker, Kubernetes (EKS Auto Mode), Terraform, CI/CD with GitHub Actions, container security scanning, and more.
->
-> ```bash
-> git checkout devops
-> ```
+## 🛠️ Architecture & Tech Stack
+
+* **Cloud Infrastructure:** AWS (EKS, VPC, Subnets, EC2, IAM)
+* **Infrastructure as Code (IaC):** Terraform
+* **Containerization & Registry:** Docker, Docker Compose, GitHub Container Registry (GHCR)
+* **Orchestration & Deployments:** Kubernetes (`kubectl`), Argo CD (GitOps)
+* **Application Stack:** Node.js (Backend), Nginx / React (Frontend), PostgreSQL (Database)
 
 ---
 
-## ✨ Features
+## 📋 Comprehensive Deployment Workflow
 
-- 📝 Create blog posts with emoji vibes
-- ✏️ Edit your existing posts
-- 🗑️ Delete posts you're not feeling anymore
-- 💬 Comment on posts
-- 🎨 Gen-Z dark UI with glassmorphism and gradients
-
-## 🏗️ Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
-│   (React +   │◀────│  (Node.js +  │◀────│              │
-│    Nginx)    │     │   Express)   │     │              │
-│   Port 80    │     │  Port 5000   │     │  Port 5432   │
-└──────────────┘     └──────────────┘     └──────────────┘
-```
-
-## 📁 Project Structure
-
-```
-Jerney/
-├── frontend/                # React (Vite) frontend
-│   ├── src/                 # React components & pages
-│   ├── nginx.conf           # Nginx config for serving the app
-│   └── package.json
-├── backend/                 # Node.js Express API
-│   ├── src/                 # Routes, DB connection
-│   └── package.json
-├── deploy/                  # EC2 deployment scripts
-│   ├── setup.sh             # One-click EC2 setup script
-│   └── jerney-nginx.conf    # Nginx reverse proxy config
-└── README.md
-```
+[ Local / EC2 Setup ] ──> [ Terraform AWS EKS ] ──> [ Docker Build & Push GHCR ] ──> [ Argo CD GitOps Sync ] ──> [ Live Application ]
 
 ---
 
-## 🚀 Deploy on AWS EC2
+## 🧰 Step 1: EC2 & CLI Setup
 
-### Prerequisites
+Launch an Ubuntu EC2 Instance (`t3.micro` or `t3.medium`) to serve as your management workstation.
 
-- An AWS EC2 instance running **Ubuntu 22.04+**
-- Security Group allowing inbound traffic on ports **22** (SSH) and **80** (HTTP)
-- SSH access to the instance
-
-### Step 1: Transfer the Code to EC2
-
+### 1. Update System & Install Dependencies
 ```bash
-# From your local machine
-scp -r -i your-key.pem ./Jerney ubuntu@<EC2_PUBLIC_IP>:~/Jerney
-```
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y curl unzip git apt-transport-https ca-certificates gnupg lsb-release
 
-### Step 2: SSH into the Instance
+2. Install Terraform
 
-```bash
-ssh -i your-key.pem ubuntu@<EC2_PUBLIC_IP>
-```
+wget -O- [https://apt.releases.hashicorp.com/gpg](https://apt.releases.hashicorp.com/gpg) | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] [https://apt.releases.hashicorp.com](https://apt.releases.hashicorp.com) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install -y terraform
 
-### Step 3: Run the Setup Script
+3. Install AWS CLI v2
 
-The `deploy/setup.sh` script installs everything and configures the app automatically:
+curl "[https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip](https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip)" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
 
-```bash
+4. Install kubectl
+
+curl -LO "[https://dl.k8s.io/release/$(curl](https://dl.k8s.io/release/$(curl) -L -s [https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl](https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl)"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version --client
+
+5. Install Docker & Docker Compose
+
+sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker $USER
+newgrp docker
+
+🏗️ Step 2: Provision AWS Infrastructure via Terraform
+Clone the repository and provision the AWS EKS Cluster alongside VPC and IAM configurations.
+
+# Clone Repository
+git clone [https://github.com/sanjayleo35/Jerney.git](https://github.com/sanjayleo35/Jerney.git)
+cd Jerney/terraform
+
+# Initialize & Apply Terraform Configuration
+terraform init
+terraform plan
+terraform apply --auto-approve
+
+Connect kubectl to EKS Cluster
+Once Terraform completes successfully, configure your local Kubernetes context:
+
+aws eks update-kubeconfig --region us-east-1 --name jerney-eks
+kubectl get nodes
+
+🐳 Step 3: Local Testing, Containerization & GHCR Push
+1. Test Application via Docker Compose
+
 cd ~/Jerney
-chmod +x deploy/setup.sh
-./deploy/setup.sh
-```
+docker compose up -d
+docker ps
 
-This script will:
-1. Update system packages
-2. Install **Node.js 20.x**, **PostgreSQL 16**, **Nginx**, and **PM2**
-3. Create the database and user
-4. Install backend dependencies
-5. Build the React frontend
-6. Configure Nginx as a reverse proxy
-7. Start the backend with PM2 (auto-restarts on crash/reboot)
+2. Authenticate with GitHub Container Registry (GHCR)
+Create a GitHub Personal Access Token (PAT) with write:packages scope and log in:
 
-### Step 4: Access the App
+echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u sanjayleo35 --password-stdin
 
-Open your browser and go to:
+3. Tag and Push Docker Images
 
-```
-http://<EC2_PUBLIC_IP>
-```
+# Tag Backend and Frontend
+docker tag jerney-backend:latest ghcr.io/sanjayleo35/jerney-backend:latest
+docker tag jerney-frontend:latest ghcr.io/sanjayleo35/jerney-frontend:latest
 
-### Useful Commands
+# Push Images to GHCR
+docker push ghcr.io/sanjayleo35/jerney-backend:latest
+docker push ghcr.io/sanjayleo35/jerney-frontend:latest
 
-```bash
-pm2 status                          # Check backend status
-pm2 logs                            # View backend logs
-pm2 restart all                     # Restart backend
-sudo systemctl restart nginx        # Restart Nginx
-sudo -u postgres psql -d jerney_db  # Connect to database
-```
+🐙 Step 4: Install Argo CD on EKS Cluster
+1. Install Argo CD Components
 
----
+kubectl create namespace argo-cd
+kubectl apply -n argo-cd -f [https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml](https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml)
 
-## 🧑‍💻 Local Development (Without Docker)
+2. Expose Argo CD Server via NodePort / Port Forwarding
 
-### Prerequisites
+kubectl patch svc argocd-server -n argo-cd -p '{"spec": {"type": "NodePort"}}'
 
-- Node.js 20+
-- PostgreSQL 16+
+3. Retrieve Initial Admin Password
 
-### Backend
+kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 
-```bash
-cd backend
-npm install
+🔒 Step 5: Grant Argo CD Cluster Admin RBAC Permissions
+If Argo CD fails to discover or list cluster-scoped resources (ConfigMaps, Nodes), grant the argocd-application-controller service account elevated cluster privileges:
 
-# Create a .env file (or export these variables)
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=jerney_user
-export DB_PASSWORD=jerney_pass_2026
-export DB_NAME=jerney_db
-export PORT=5000
+# Create ClusterRoleBinding for Argo CD Controller
+kubectl create clusterrolebinding argocd-application-controller-admin \
+  --clusterrole=cluster-admin \
+  --serviceaccount=argo-cd:argocd-application-controller
 
-npm start
-```
+# Restart Argo CD StatefulSet to apply RBAC permissions
+kubectl rollout restart statefulset argocd-application-controller -n argo-cd
+kubectl rollout status statefulset argocd-application-controller -n argo-cd
 
-### Frontend
+🔄 Step 6: Deploy Application via Argo CD (GitOps)
+1. Deploy Argo CD Application Manifest
+Ensure your argocd-app.yaml points to your GitHub repository and devops branch:
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+kubectl apply -f argocd-app.yaml -n argo-cd
 
-The Vite dev server starts on `http://localhost:3000` and proxies `/api` requests to the backend at `http://localhost:5000`.
+2. Force Hard Refresh & Trigger Sync
+If Argo CD displays a cached state or needs an immediate re-sync:
 
----
+# Hard Refresh Annotation
+kubectl patch app jerney-app -n argo-cd --type merge -p '{"metadata": {"annotations": {"argocd.argoproj.io/refresh": "hard"}}}'
 
-## 📡 API Endpoints
+# Trigger Sync
+kubectl patch app jerney-app -n argo-cd --type merge -p '{"operation": {"sync": {"prune": true}}}'
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/posts` | Get all posts |
-| GET | `/api/posts/:id` | Get single post with comments |
-| POST | `/api/posts` | Create a new post |
-| PUT | `/api/posts/:id` | Update a post |
-| DELETE | `/api/posts/:id` | Delete a post |
-| GET | `/api/comments/post/:postId` | Get comments for a post |
-| POST | `/api/comments` | Create a comment |
-| DELETE | `/api/comments/:id` | Delete a comment |
+3. Verify Deployed Kubernetes Resources
 
+kubectl get all,pvc,ingress -n jerney
 
----
+🧹 Step 7: Complete Tear Down (Prevent Cloud Charges)
+Once testing or portfolio snapshot creation is complete, follow this exact sequence to prevent ongoing AWS billing (EKS control plane, NAT Gateways, EBS volumes):
 
-## 🌿 Branch Strategy
+# 1. Delete Argo CD Application & Application Namespaces
+kubectl delete app jerney-app -n argo-cd
+kubectl delete -f k8s/ -n jerney --ignore-not-found
+kubectl delete ns jerney argo-cd --ignore-not-found
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Source code + EC2 bare-metal deployment |
-| `devops` | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
+# 2. Destroy AWS Infrastructure via Terraform
+cd ~/Jerney/terraform
+terraform destroy --auto-approve
 
----
+📌 Handy Verification Commands Quick Reference
 
+Action	Command
+Check EKS Nodes	kubectl get nodes
+Check Argo CD Pods	kubectl get pods -n argo-cd
+Check App Workloads	kubectl get pods -n jerney
+Check Remote Branches	git ls-remote --heads https://github.com/sanjayleo35/Jerney.git
+Restart Application Deployment	kubectl rollout restart deployment jerney-backend -n jerney
