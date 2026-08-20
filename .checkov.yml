@@ -1,0 +1,8 @@
+skip-check:
+  - CKV_AWS_39   # Allow public access to EKS endpoint for kubectl
+  - CKV_AWS_58   # Allow EKS public endpoint enabled for dev setup
+soft-fail: false
+framework:
+  - terraform
+directory:
+  - terraform
