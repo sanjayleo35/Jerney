@@ -14,7 +14,8 @@ env:
   BACKEND_IMAGE: ghcr.io/sanjayleo35/jerney-backend
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
 
 jobs:
   test-and-code-quality:
