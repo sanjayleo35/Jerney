@@ -116,3 +116,17 @@ jobs:
           docker push "${BACKEND_IMAGE}:latest"
           docker push "${FRONTEND_IMAGE}:${GITHUB_SHA}"
           docker push "${FRONTEND_IMAGE}:latest"
+
+      - name: Update Kubernetes Manifests with New Image Tag
+        if: github.event_name == 'push'
+        run: |
+          sed -i -E "s|ghcr.io/sanjayleo35/jerney-backend:.*|ghcr.io/sanjayleo35/jerney-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
+          sed -i -E "s|ghcr.io/sanjayleo35/jerney-frontend:.*|ghcr.io/sanjayleo35/jerney-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
+
+      - name: Commit updated Kubernetes manifests
+        if: github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "gitops: update k8s image tags to ${{ github.sha }}"
+          branch: devops
+          file_pattern: k8s/backend-deployment.yaml k8s/frontend-deployment.yaml
