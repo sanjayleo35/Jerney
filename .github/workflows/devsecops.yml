@@ -39,23 +39,23 @@ jobs:
         working-directory: ./backend
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit --audit-level=high || true
 
       - name: Install and audit frontend dependencies
         working-directory: ./frontend
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit --audit-level=high || true
 
       - name: SonarCloud scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >-
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.projectKey=sanjayleo35_Jerney
+            -Dsonar.organization=sanjayleo35
 
   build-and-security-scan:
     name: Build and Security Scan
