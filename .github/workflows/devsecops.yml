@@ -75,7 +75,7 @@ jobs:
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Build backend image
         run: docker build -t "${BACKEND_IMAGE}:${GITHUB_SHA}" ./backend
