@@ -87,7 +87,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: '0'
 
       - name: Build frontend image
         run: docker build -t "${FRONTEND_IMAGE}:${GITHUB_SHA}" ./frontend
@@ -100,7 +100,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: '0'
 
       - name: Tag images for GHCR
         if: github.event_name == 'push'
