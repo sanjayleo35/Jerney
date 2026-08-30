@@ -2,11 +2,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: jerney-app
-  namespace: argo-cd
+  namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/sanjayleo35/Jerney.git'
+    repoURL: 'https://github.com/sanjayleo35/jerney.git'
     targetRevision: devops
     path: k8s
   destination:
