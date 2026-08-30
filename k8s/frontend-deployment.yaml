@@ -22,7 +22,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: frontend
-          image: ghcr.io/sanjayleo35/jerney-frontend:c990451729dafcd1f98885f89bbcb868405ffef2
+          image: ghcr.io/sanjayleo35/jerney-frontend:ce8dee6394f8086d29bd95771f88b3a64a1abfc1
           imagePullPolicy: Always
           ports:
             - name: http
