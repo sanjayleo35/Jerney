@@ -1,164 +1,235 @@
-# 🚀 Jerney — Production DevSecOps & GitOps Project
+# Jerney
 
-Jerney is a multi-service modern microservices blogging platform deployed on **AWS EKS (Elastic Kubernetes Service)** using **Terraform** for Infrastructure as Code (IaC), **Docker** & **GitHub Container Registry (GHCR)** for image management, and **Argo CD** for declarative GitOps continuous deployment.
+![GitHub Actions](https://img.shields.io/github/actions/workflow/status/sanjayleo35/Jerney/devsecops.yml?branch=devops)
+![GitHub repo size](https://img.shields.io/github/repo-size/sanjayleo35/Jerney)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-EKS-326CE5.svg)
+![Terraform](https://img.shields.io/badge/Terraform-1.0+-623CE4.svg)
+![Docker](https://img.shields.io/badge/Docker-Images-2496ED.svg)
+![Trivy](https://img.shields.io/badge/Scanner-Trivy-4A4A55.svg)
 
-> [!IMPORTANT]
-> **Branch Execution Note:** Please execute the deployment steps using the **`devops`** branch. The code examples, line references, and inline comment configurations provided throughout this README are tailored specifically to the `devops` branch workflows.
+Jerney is a full-stack application built with a React frontend, Node.js backend, and PostgreSQL database. It is deployed on AWS EKS using DevSecOps practices across infrastructure provisioning, containerization, automated security scanning, and GitOps-driven delivery.
 
----
-
-## 🛠️ Architecture & Tech Stack
-
-* **Cloud Infrastructure:** AWS (EKS, VPC, Subnets, EC2, IAM)
-* **Infrastructure as Code (IaC):** Terraform
-* **Containerization & Registry:** Docker, Docker Compose, GitHub Container Registry (GHCR)
-* **Orchestration & Deployments:** Kubernetes (`kubectl`), Argo CD (GitOps)
-* **Application Stack:** Node.js (Backend), Nginx / React (Frontend), PostgreSQL (Database)
+> Important: This project is intended to be operated from the `devops` branch. The CI/CD, GitOps, and image automation examples in this README assume the `devops` branch is the active deployment branch.
 
 ---
 
-## 📋 Comprehensive Deployment Workflow
+## 1. Project Overview
 
-[ Local / EC2 Setup ] ──> [ Terraform AWS EKS ] ──> [ Docker Build & Push GHCR ] ──> [ Argo CD GitOps Sync ] ──> [ Live Application ]
+Jerney is a blogging and content platform that follows a modern cloud-native deployment model:
+
+- Frontend: React application served through a lightweight web runtime
+- Backend: Node.js API for application logic and data access
+- Database: PostgreSQL for persistent application data
+- Platform: AWS EKS for cluster orchestration and runtime deployment
+- Delivery model: Argo CD GitOps for reconciliation from source control
+- Security model: Trivy, SonarQube, and GitHub Actions-based validation before deployment
+
+The end-to-end setup ensures that infrastructure, application containers, and runtime behavior are validated and monitored before production release.
 
 ---
 
-### 🧰 Step 1: EC2 Workstation Setup & Tool Installation
+## 2. Architecture & Tech Stack
 
-Run all commands below to prepare your management workstation:
-
-```bash
-# Update System Dependencies
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl unzip git apt-transport-https ca-certificates gnupg lsb-release
-
-# Install Terraform
-wget -O- "https://apt.releases.hashicorp.com/gpg" | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install -y terraform
-
-# Install AWS CLI v2
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-
-# Install kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-# Install Docker & Enable Permissions
-sudo apt install -y docker.io docker-compose-v2
-sudo usermod -aG docker $USER
-newgrp docker
-
+```mermaid
+flowchart LR
+    User[Developer / User] --> Git[GitHub Repository<br/>devops branch]
+    Git --> GA[GitHub Actions<br/>CI / Build / Scan]
+    GA --> GHCR[GHCR<br/>ghcr.io/sanjayleo35/jerney-*]
+    GHCR --> Argo[Argo CD<br/>argocd namespace]
+    Argo --> EKS[AWS EKS Cluster]
+    EKS --> Frontend[Frontend Deployment<br/>jerney namespace]
+    EKS --> Backend[Backend Deployment<br/>jerney namespace]
+    Backend --> DB[(PostgreSQL)]
+    EKS --> Prom[Prometheus / Grafana<br/>monitoring namespace]
+    GA --> Trivy[Trivy Scan]
+    GA --> Sonar[SonarQube]
+    Prom --> Dash[Observability Dashboards]
+    Trivy --> Security[Security / Vulnerability Report]
 ```
 
----
+### Infrastructure
 
-### 🏗️ Step 2: Provision AWS Infrastructure via Terraform
+- AWS EKS
+- Amazon VPC and networking resources
+- IAM policies and least-privilege access
+- Terraform for reusable infrastructure provisioning
 
-Clone the repository and provision the AWS EKS Cluster alongside VPC and IAM configurations:
+### Containerization & CI
+
+- Docker for building application images
+- GitHub Actions for automation and validation
+- GitHub Container Registry (GHCR)
+- Images are built and referenced in lowercase format such as:
 
 ```bash
-# Clone Repository
-git clone https://github.com/sanjayleo35/Jerney.git
-cd Jerney/terraform
+ghcr.io/sanjayleo35/jerney-backend:latest
+ghcr.io/sanjayleo35/jerney-frontend:latest
+```
 
-# Initialize & Apply Terraform Configuration
+### Continuous Delivery (GitOps)
+
+- Argo CD installed in the `argocd` namespace
+- Application manifests stored in Git and synced from the `devops` branch
+- Automated sync and self-healing enabled for application reconciliation
+
+### Observability
+
+- Prometheus and Grafana via `kube-prometheus-stack`
+- Monitoring namespace used for telemetry and dashboards
+- Kubernetes resource visibility for app health and cluster metrics
+
+### Security
+
+- Trivy for vulnerability and Kubernetes scanning
+- SonarQube for code quality and static analysis
+- Automated security checks integrated into CI workflow and deployment gatekeeping
+
+---
+
+## 3. Phase-by-Phase Implementation Summary
+
+### Phase 1: Infrastructure Provisioning with Terraform
+
+Provision the AWS environment required to run the cluster and supporting resources:
+
+```bash
+cd terraform
 terraform init
 terraform plan
 terraform apply --auto-approve
-
-# Connect kubectl to EKS Cluster
-aws eks update-kubeconfig --region us-east-1 --name jerney-eks
-kubectl get nodes
-
 ```
----
 
-### 🐳 Step 3: Local Testing, Containerization & GHCR Push
+This phase includes the VPC, networking, IAM, and EKS cluster setup needed before deploying application workloads.
+
+### Phase 2: Docker Build & GitHub Actions CI Pipeline
+
+Build the container images and push them to GHCR using lowercase repository names:
 
 ```bash
-# 1. Test Application via Docker Compose
-cd ~/Jerney
-docker compose up -d
-docker ps
+docker build -t ghcr.io/sanjayleo35/jerney-backend:latest ./backend
+docker build -t ghcr.io/sanjayleo35/jerney-frontend:latest ./frontend
 
-# 2. Authenticate with GitHub Container Registry (GHCR)
-echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u sanjayleo35 --password-stdin
-
-# 3. Tag and Push Docker Images
-docker tag jerney-backend:latest ghcr.io/sanjayleo35/jerney-backend:latest
-docker tag jerney-frontend:latest ghcr.io/sanjayleo35/jerney-frontend:latest
+docker login ghcr.io -u sanjayleo35
 
 docker push ghcr.io/sanjayleo35/jerney-backend:latest
 docker push ghcr.io/sanjayleo35/jerney-frontend:latest
 ```
 
----
+GitHub Actions validates code quality, builds artifacts, and enforces security scans before release.
 
-### 🐙 Step 4: Install Argo CD on EKS Cluster
+### Phase 3: Kubernetes Orchestration
+
+The `k8s/` directory contains the namespace and deployment manifests for the app stack, including:
+
+- Backend deployment
+- Frontend deployment
+- PostgreSQL database deployment
+- Supporting services and configuration
+
+Example deployment namespace:
 
 ```bash
-# 1. Install Argo CD Components
-kubectl create namespace argo-cd
-kubectl apply -n argo-cd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl create namespace jerney
+kubectl apply -f k8s/
+```
 
-# 2. Expose Argo CD Server via NodePort
-kubectl patch svc argocd-server -n argo-cd -p '{"spec": {"type": "NodePort"}}'
+### Phase 4: GitOps CD Setup with Argo CD
 
-# 3. Retrieve Initial Admin Password
-kubectl -n argo-cd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+Argo CD watches the Git repository and reconciles the cluster to the desired state. The application manifest is targeted to the `argocd` namespace and synced from the `devops` branch.
 
+```bash
+kubectl get application jerney-app -n argocd
+kubectl patch app jerney-app -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
+```
+
+This automation ensures changes pushed to Git are reflected in Kubernetes without manual imperative commands.
+
+### Phase 5: Cloud Observability & Security Auditing
+
+Monitoring and scanning are part of the DevSecOps lifecycle:
+
+- Prometheus + Grafana provide runtime observability
+- Trivy scans Kubernetes manifests and container images for vulnerabilities
+- SonarQube analyzes code quality and maintainability
+
+```bash
+trivy k8s --include-namespaces jerney --report summary
 ```
 
 ---
 
-### 🔒 Step 5: Grant Argo CD Cluster Admin RBAC Permissions
+## 4. Local Development & Verification Commands
 
-If Argo CD fails to discover or list cluster-scoped resources (`ConfigMaps`, `Nodes`), grant elevated permissions to the controller:
+### Kubernetes checks
 
 ```bash
-# Create ClusterRoleBinding for Argo CD Controller
-kubectl create clusterrolebinding argocd-application-controller-admin \
-  --clusterrole=cluster-admin \
-  --serviceaccount=argo-cd:argocd-application-controller
+# Check application pods in jerney namespace
+kubectl get pods -n jerney
+kubectl get svc -n jerney
+kubectl get deployment -n jerney
 
-# Restart Argo CD StatefulSet
-kubectl rollout restart statefulset argocd-application-controller -n argo-cd
-kubectl rollout status statefulset argocd-application-controller -n argo-cd
+# Inspect Argo CD resources
+kubectl get pods -n argocd
+kubectl get application jerney-app -n argocd
+kubectl get secret -n argocd
 
+# Inspect monitoring resources
+kubectl get pods -n monitoring
+kubectl get svc -n monitoring
+```
+
+### Verify running image references
+
+```bash
+kubectl get deployment jerney-backend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment jerney-frontend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
+```
+
+Expected output style:
+
+```bash
+ghcr.io/sanjayleo35/jerney-backend:latest
+ghcr.io/sanjayleo35/jerney-frontend:latest
+```
+
+### Trivy security scan
+
+```bash
+trivy k8s --include-namespaces jerney --report summary
+```
+
+### Port-forward for Grafana
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/kube-prometheus-stack-grafana -n monitoring 3000:80
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+### Port-forward for Argo CD UI
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/argocd-server -n argocd 8080:443
+```
+
+Then open:
+
+```text
+https://localhost:8080
+```
+
+To retrieve the admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
 ---
 
-### 🔄 Step 6: Deploy Application via Argo CD (GitOps)
+## Summary
 
-```bash
-# 1. Deploy Argo CD Application Manifest
-kubectl apply -f argocd-app.yaml -n argo-cd
-
-# 2. Force Hard Refresh & Trigger Sync
-kubectl patch app jerney-app -n argo-cd --type merge -p '{"metadata": {"annotations": {"argocd.argoproj.io/refresh": "hard"}}}'
-kubectl patch app jerney-app -n argo-cd --type merge -p '{"operation": {"sync": {"prune": true}}}'
-
-# 3. Verify Deployed Kubernetes Resources
-kubectl get all,pvc,ingress -n jerney
-```
-
----
-
-### 🧹 Step 7: Complete Tear Down (Prevent Cloud Charges)
-
-Follow this exact sequence to delete all cluster resources, load balancers, and active infrastructure:
-
-```bash
-# 1. Delete Argo CD Application & Namespaces
-kubectl delete app jerney-app -n argo-cd
-kubectl delete -f k8s/ -n jerney --ignore-not-found
-kubectl delete ns jerney argo-cd --ignore-not-found
-
-# 2. Destroy AWS Infrastructure via Terraform
-cd ~/Jerney/terraform
-terraform destroy --auto-approve
-```
+Jerney demonstrates a complete DevSecOps lifecycle in a Kubernetes environment: infrastructure provisioning with Terraform, secure containerization with GitHub Actions and GHCR, declarative deployment via Argo CD, and observability and security auditing with Prometheus, Grafana, and Trivy. The repository is structured for repeatability, automation, and production-ready deployment practices.
