@@ -10,8 +10,10 @@ FROM node:22-alpine AS production
 # Security: run as non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Security: remove unnecessary packages
-RUN apk --no-cache add dumb-init
+# Security: upgrade OS packages and remove unnecessary runtime tools/npm
+RUN apk --no-cache upgrade && \
+    apk --no-cache add dumb-init && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app
 
