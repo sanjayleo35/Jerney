@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - devops
+    paths-ignore:
+      - 'k8s/**'
+      - 'README.md'
+      - '.checkov.yml'
   pull_request:
     branches:
       - devops
+    paths-ignore:
+      - 'k8s/**'
+      - 'README.md'
+      - '.checkov.yml'
 
 env:
   GHCR_REGISTRY: ghcr.io

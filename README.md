@@ -62,8 +62,8 @@ flowchart LR
 - Images are built and referenced in lowercase format such as:
 
 ```bash
-ghcr.io/sanjayleo35/jerney-backend:latest
-ghcr.io/sanjayleo35/jerney-frontend:latest
+ghcr.io/sanjayleo35/jerney-backend:<git-sha>
+ghcr.io/sanjayleo35/jerney-frontend:<git-sha>
 ```
 
 ### Continuous Delivery (GitOps)
@@ -208,8 +208,8 @@ kubectl get deployment jerney-frontend -n jerney -o jsonpath='{.spec.template.sp
 Expected output style:
 
 ```bash
-ghcr.io/sanjayleo35/jerney-backend:latest
-ghcr.io/sanjayleo35/jerney-frontend:latest
+ghcr.io/sanjayleo35/jerney-backend:<git-sha>
+ghcr.io/sanjayleo35/jerney-frontend:<git-sha>
 ```
 
 ### Trivy security scan
