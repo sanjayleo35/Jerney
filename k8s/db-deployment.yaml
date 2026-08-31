@@ -52,13 +52,13 @@ spec:
             runAsNonRoot: false
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "jerney_user", "-d", "jerney_db"]
+              command: ["sh", "-c", "pg_isready -h localhost -U ${POSTGRES_USER:-jerney_user} -d ${POSTGRES_DB:-jerney_db}"]
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "jerney_user", "-d", "jerney_db"]
+              command: ["sh", "-c", "pg_isready -h localhost -U ${POSTGRES_USER:-jerney_user} -d ${POSTGRES_DB:-jerney_db}"]
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3

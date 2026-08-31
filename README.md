@@ -7,249 +7,351 @@
 ![Docker](https://img.shields.io/badge/Docker-Images-2496ED.svg)
 ![Trivy](https://img.shields.io/badge/Scanner-Trivy-4A4A55.svg)
 
-Jerney is a full-stack application built with a React frontend, Node.js backend, and PostgreSQL database. It is deployed on AWS EKS using DevSecOps practices across infrastructure provisioning, containerization, automated security scanning, and GitOps-driven delivery.
+Jerney is a full-stack blogging and content platform built with a React frontend, Node.js API backend, and PostgreSQL database. It is deployed on AWS EKS using DevSecOps practices across infrastructure provisioning, containerization, automated security scanning, and GitOps-driven delivery.
 
-> Important: This project is intended to be operated from the `devops` branch. The CI/CD, GitOps, and image automation examples in this README assume the `devops` branch is the active deployment branch.
-
----
-
-## 1. Project Overview
-
-Jerney is a blogging and content platform that follows a modern cloud-native deployment model:
-
-- Frontend: React application served through a lightweight web runtime
-- Backend: Node.js API for application logic and data access
-- Database: PostgreSQL for persistent application data
-- Platform: AWS EKS for cluster orchestration and runtime deployment
-- Delivery model: Argo CD GitOps for reconciliation from source control
-- Security model: Trivy, SonarQube, and GitHub Actions-based validation before deployment
-
-The end-to-end setup ensures that infrastructure, application containers, and runtime behavior are validated and monitored before production release.
+> **Important**: This project is operated from the `devops` branch. All CI/CD triggers, GitOps synchronization, and deployment manifests assume `devops` is the active branch.
 
 ---
 
-## 2. Architecture & Tech Stack
+## 1. Architecture & Tech Stack
 
 ```mermaid
 flowchart LR
     User[Developer / User] --> Git[GitHub Repository<br/>devops branch]
     Git --> GA[GitHub Actions<br/>CI / Build / Scan]
     GA --> GHCR[GHCR<br/>ghcr.io/sanjayleo35/jerney-*]
-    GHCR --> Argo[Argo CD<br/>argocd namespace]
-    Argo --> EKS[AWS EKS Cluster]
+    GA -.->|GitOps Manifest Commit| Git
+    Argo[Argo CD<br/>argocd namespace] -->|Watches devops| Git
+    Argo -->|Syncs Manifests| EKS[AWS EKS Cluster]
     EKS --> Frontend[Frontend Deployment<br/>jerney namespace]
     EKS --> Backend[Backend Deployment<br/>jerney namespace]
-    Backend --> DB[(PostgreSQL)]
+    Backend --> DB[(PostgreSQL StatefulSet/Pod<br/>EBS gp3 Storage)]
     EKS --> Prom[Prometheus / Grafana<br/>monitoring namespace]
-    GA --> Trivy[Trivy Scan]
-    GA --> Sonar[SonarQube]
-    Prom --> Dash[Observability Dashboards]
-    Trivy --> Security[Security / Vulnerability Report]
+    GA --> Trivy[Trivy Vulnerability Scan]
+    GA --> Sonar[SonarCloud Analysis]
+    GA --> Checkov[Checkov IaC Scan]
 ```
 
-### Infrastructure
+### Core Technologies
 
-- AWS EKS
-- Amazon VPC and networking resources
-- IAM policies and least-privilege access
-- Terraform for reusable infrastructure provisioning
-
-### Containerization & CI
-
-- Docker for building application images
-- GitHub Actions for automation and validation
-- GitHub Container Registry (GHCR)
-- Images are built and referenced in lowercase format such as:
-
-```bash
-ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
-ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
-```
-
-### Continuous Delivery (GitOps)
-
-- Argo CD installed in the `argocd` namespace
-- Application manifests stored in Git and synced from the `devops` branch
-- Automated sync and self-healing enabled for application reconciliation
-
-### Observability
-
-- Prometheus and Grafana via `kube-prometheus-stack`
-- Monitoring namespace used for telemetry and dashboards
-- Kubernetes resource visibility for app health and cluster metrics
-
-### Security
-
-- Trivy for vulnerability and Kubernetes scanning
-- SonarQube for code quality and static analysis
-- Checkov for Infrastructure as Code (IaC) security scanning of Terraform configurations
-- Automated security checks integrated into CI workflow and deployment gatekeeping
+- **Frontend**: React (Vite, React Router, Axios) served via Nginx (non-root, listening on port 8080)
+- **Backend**: Node.js Express REST API (`/api/posts`, `/api/comments`, `/api/health`) executed under `dumb-init` as non-root user (`appuser:1000`)
+- **Database**: PostgreSQL 16 on Amazon EBS `gp3` storage with `WaitForFirstConsumer` volume binding
+- **Infrastructure**: AWS EKS (Auto Mode) and VPC provisioned with Terraform
+- **GitOps Delivery**: Argo CD watching `k8s/` manifests on the `devops` branch
+- **Security & Quality**:
+  - **Checkov**: Infrastructure as Code (IaC) security scanner for Terraform
+  - **Trivy**: Container image vulnerability scanner (blocks CRITICAL unfixed CVEs)
+  - **SonarCloud**: Static Application Security Testing (SAST) and code quality gate
+  - **npm audit**: Dependency vulnerability scanning
+  - **NetworkPolicies**: Restricts inter-pod communication (`frontend -> backend -> db`)
 
 ---
 
-## 3. Phase-by-Phase Implementation Summary
+## 2. Repository Structure
 
-### Phase 1: Infrastructure Provisioning with Terraform
+```text
+.
+├── .checkov.yml                  # Checkov IaC scan policy configuration
+├── .env.example                  # Environment variable reference
+├── .github/
+│   └── workflows/
+│       └── devsecops.yml         # GitHub Actions DevSecOps CI/CD pipeline
+├── .gitignore                    # Git ignore rules for state, secrets, dependencies
+├── README.md                     # Project documentation
+├── argocd-app.yaml               # Argo CD Application CRD manifest
+├── backend/                      # Node.js API Service
+│   ├── .dockerignore
+│   ├── .eslintrc.json
+│   ├── Dockerfile                # Multi-stage non-root Node.js Dockerfile
+│   ├── package.json
+│   └── src/                      # API controllers, models, and migrations
+├── frontend/                     # React Single-Page Application
+│   ├── .dockerignore
+│   ├── .eslintrc.json
+│   ├── Dockerfile                # Multi-stage non-root Nginx Dockerfile
+│   ├── nginx.conf                # Custom Nginx reverse proxy & security headers
+│   ├── package.json
+│   └── src/                      # React UI components & views
+├── k8s/                          # Kubernetes Manifests (GitOps source)
+│   ├── namespace.yaml            # 'jerney' namespace
+│   ├── storageclass.yaml         # EBS gp3 StorageClass ('jerney-ebs-sc')
+│   ├── secret.yaml               # Secret template (development placeholder)
+│   ├── secret.example.yaml       # Secret format and production guidance
+│   ├── db-pvc.yaml               # PostgreSQL PersistentVolumeClaim (10Gi)
+│   ├── db-deployment.yaml        # PostgreSQL Deployment (Recreate strategy)
+│   ├── db-service.yaml           # Database ClusterIP Service (port 5432)
+│   ├── backend-deployment.yaml   # Backend Deployment with db-migrate initContainer
+│   ├── backend-service.yaml      # Backend ClusterIP Service (port 5000)
+│   ├── frontend-deployment.yaml  # Frontend Deployment (port 8080)
+│   ├── frontend-service.yaml     # Frontend NodePort Service (port 80 -> 8080)
+│   └── network-policy.yaml       # Least-privilege ingress network policies
+├── sonar-project.properties      # SonarCloud scanner configuration
+└── terraform/                    # Terraform Infrastructure as Code
+    ├── main.tf                   # VPC and EKS Auto Mode modules
+    ├── outputs.tf                # Cluster endpoints, CA, and connection strings
+    ├── provider.tf               # AWS provider and Terraform version constraints
+    ├── terraform.tfvars          # Environment variable values (dev)
+    └── variables.tf              # Input variable definitions & validation
+```
 
-Provision the AWS environment required to run the cluster and supporting resources:
+---
+
+## 3. Prerequisites
+
+Before deploying, ensure you have the following tools installed and configured:
+
+- **AWS CLI** (v2.x) configured with administrative credentials (`aws configure`)
+- **Terraform** (>= 1.6.0)
+- **kubectl** (v1.28+)
+- **Docker** (v24+)
+- **Node.js** (v20.x) & **npm**
+
+---
+
+## 4. Terraform & EKS Deployment (Phase 1)
+
+The infrastructure is provisioned using official HashiCorp AWS modules with EKS Auto Mode and envelope KMS encryption for Kubernetes secrets at rest:
 
 ```bash
 cd terraform
+
+# 1. Initialize Terraform providers and modules
 terraform init
+
+# 2. Review execution plan
 terraform plan
+
+# 3. Apply infrastructure
 terraform apply --auto-approve
 ```
 
-This phase includes the VPC, networking, IAM, and EKS cluster setup needed before deploying application workloads.
+### Configure kubectl
 
-### Phase 2: Docker Build & GitHub Actions CI Pipeline
-
-Build the container images and push them to GHCR using lowercase repository names:
+After Terraform completes, update your local `kubeconfig`:
 
 ```bash
-docker build -t ghcr.io/sanjayleo35/jerney-backend:<commit-sha> ./backend
-docker build -t ghcr.io/sanjayleo35/jerney-frontend:<commit-sha> ./frontend
-
-docker login ghcr.io -u sanjayleo35
-
-docker push ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
-docker push ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
+aws eks update-kubeconfig --region us-east-1 --name jerney-eks
 ```
 
-GitHub Actions validates code quality, builds artifacts, and enforces security scans before release.
-
-### Phase 3: Kubernetes Orchestration
-
-The `k8s/` directory contains the namespace and deployment manifests for the app stack, including:
-
-- Namespace declaration (`jerney`)
-- StorageClass for EBS gp3 volumes (`jerney-ebs-sc`)
-- Database secret template (`secret.yaml`) and example (`secret.example.yaml`)
-- PostgreSQL database deployment and PersistentVolumeClaim
-- Backend deployment and Service
-- Frontend deployment and Service
-- Network policies for least-privilege inter-pod communication
-
-To deploy the Kubernetes manifests:
+Verify cluster access:
 
 ```bash
-# 1. Create namespace and storage class
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/storageclass.yaml
-
-# 2. Apply database secret (configure credentials before deploying)
-kubectl apply -f k8s/secret.yaml
-
-# 3. Apply workloads, services, and network policies
-kubectl apply -f k8s/
-```
-
-### Phase 4: GitOps CD Setup with Argo CD
-
-Argo CD watches the Git repository and reconciles the cluster to the desired state. The application manifest is targeted to the `argocd` namespace and synced from the `devops` branch.
-
-```bash
-# Create the Argo CD application in the argocd namespace
-kubectl apply -f argocd-app.yaml
-
-# Check status and force sync if needed
-kubectl get application jerney-app -n argocd
-kubectl patch app jerney-app -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
-```
-
-This automation ensures changes pushed to Git are reflected in Kubernetes without manual imperative commands.
-
-### Phase 5: Cloud Observability & Security Auditing
-
-Monitoring and scanning are part of the DevSecOps lifecycle:
-
-- Prometheus + Grafana provide runtime observability
-- Trivy scans Kubernetes manifests and container images for vulnerabilities
-- SonarQube analyzes code quality and maintainability
-- Checkov scans Terraform IaC configurations for security compliance
-
-```bash
-# Trivy scan on Kubernetes namespace
-trivy k8s --include-namespaces jerney --report summary
-
-# Checkov scan on Terraform IaC
-checkov -d terraform/
+kubectl get nodes
 ```
 
 ---
 
-## 4. Local Development & Verification Commands
+## 5. Kubernetes Secrets Configuration (Phase 2)
 
-### Kubernetes checks
+Secrets are never stored in plain text in version control. Safe templates (`secret.yaml` and `secret.example.yaml`) are provided in `k8s/`.
+
+### Development Deployment
+
+Before deploying workloads, apply the database secret to the cluster:
 
 ```bash
-# Check application pods in jerney namespace
-kubectl get pods -n jerney
-kubectl get svc -n jerney
-kubectl get deployment -n jerney
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/secret.yaml
+```
 
-# Inspect Argo CD resources
-kubectl get pods -n argocd
+> **Production Recommendation**: In production environments, use the **External Secrets Operator (ESO)** with AWS Secrets Manager or HashiCorp Vault to inject credentials dynamically into Kubernetes Secrets without storing values in Git.
+
+---
+
+## 6. CI/CD & DevSecOps Pipeline (Phase 3)
+
+The GitHub Actions workflow (`.github/workflows/devsecops.yml`) executes an automated DevSecOps cycle on every push to the `devops` branch:
+
+1. **Static Analysis & Linting**: ESLint checks on backend and frontend code.
+2. **Dependency Audit**: `npm audit --audit-level=critical` scans for severe vulnerabilities.
+3. **SonarCloud Scan**: SAST scan for code quality, security hotspots, and bugs.
+4. **Checkov IaC Scan**: Terraform security compliance analysis.
+5. **Container Build**: Multi-stage Docker builds tagged with `${GITHUB_SHA}`.
+6. **Trivy Image Scan**: Vulnerability scan failing on CRITICAL unfixed CVEs.
+7. **GHCR Registry Push**: Images pushed with immutable commit SHA tags:
+   - `ghcr.io/sanjayleo35/jerney-backend:<commit-sha>`
+   - `ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>`
+8. **GitOps Manifest Update**: Automated update of `k8s/backend-deployment.yaml` and `k8s/frontend-deployment.yaml` with the new commit SHA.
+9. **GitOps Auto-Commit**: Pushes updated manifests with `[skip ci]` to `devops`.
+
+### Breaking the GitOps Loop
+
+To prevent automated GitOps manifest commits from triggering infinite recursive CI builds:
+- The workflow includes `paths-ignore:` for `'k8s/**'`, `'README.md'`, and `'.checkov.yml'`.
+- The commit message includes `[skip ci]`.
+- The auto-commit action strictly restricts its commit diff to `file_pattern: k8s/backend-deployment.yaml k8s/frontend-deployment.yaml`.
+
+---
+
+## 7. Kubernetes Workload Deployment (Phase 4)
+
+Deploy all Kubernetes manifests in order:
+
+```bash
+# 1. Apply Namespace and StorageClass
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/storageclass.yaml
+
+# 2. Apply Database Secret
+kubectl apply -f k8s/secret.yaml
+
+# 3. Apply all workloads and network policies
+kubectl apply -f k8s/
+```
+
+### Workload Architecture
+
+- **PostgreSQL**: Single replica with `strategy: Recreate` ensuring safe EBS RWO volume unmount/remount during pod restarts.
+- **Backend**: 2 replicas with `initContainers`:
+  - `wait-for-db`: Polls PostgreSQL port 5432 using `busybox:1.36` until database is ready.
+  - `db-migrate`: Runs database schema migrations (`node src/migrate.js`) before API server starts.
+- **Frontend**: 2 replicas running Nginx as non-root on port 8080 with API reverse-proxy routing to `jerney-backend:5000`.
+- **NetworkPolicy**: Isolates database ingress exclusively to `jerney-backend` pods, and backend ingress exclusively to `jerney-frontend` pods.
+
+---
+
+## 8. Argo CD & GitOps Continuous Delivery (Phase 5)
+
+Argo CD manages declarative reconciliation between the Git repository and the EKS cluster:
+
+```bash
+# 1. Install Argo CD (if not already installed)
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 2. Apply the Jerney Argo CD Application
+kubectl apply -f argocd-app.yaml
+
+# 3. Verify sync status
 kubectl get application jerney-app -n argocd
-kubectl get secret -n argocd
-
-# Inspect monitoring resources
-kubectl get pods -n monitoring
-kubectl get svc -n monitoring
 ```
 
-### Verify running image references
+### Retrieve Argo CD Admin Password
 
 ```bash
-kubectl get deployment jerney-backend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
-kubectl get deployment jerney-frontend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 ```
 
-Expected output style:
-
-```bash
-ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
-ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
-```
-
-### Trivy security scan
-
-```bash
-trivy k8s --include-namespaces jerney --report summary
-```
-
-### Port-forward for Grafana
-
-```bash
-kubectl port-forward --address 0.0.0.0 svc/kube-prometheus-stack-grafana -n monitoring 3000:80
-```
-
-Then open:
-
-```text
-http://localhost:3000
-```
-
-### Port-forward for Argo CD UI
+### Access Argo CD Web UI
 
 ```bash
 kubectl port-forward --address 0.0.0.0 svc/argocd-server -n argocd 8080:443
 ```
+Open `https://localhost:8080` (Username: `admin`).
 
-Then open:
+---
 
-```text
-https://localhost:8080
-```
+## 9. Verification & Observability
 
-To retrieve the admin password:
+### Verify Pods and Services
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+# Check all resources in the jerney namespace
+kubectl get pods,svc,pvc -n jerney -o wide
+```
+
+### Verify Running Image References
+
+Ensure pods run immutable SHA-tagged images:
+
+```bash
+kubectl get deployment jerney-backend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
+echo ""
+kubectl get deployment jerney-frontend -n jerney -o jsonpath='{.spec.template.spec.containers[0].image}'
+echo ""
+```
+
+Expected output format:
+```bash
+ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
+ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
+```
+
+### Access Frontend Application
+
+For local testing and portfolio validation, port-forward the frontend service:
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/jerney-frontend -n jerney 3000:80
+```
+Open `http://localhost:3000`.
+
+### Access Prometheus & Grafana Monitoring
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/kube-prometheus-stack-grafana -n monitoring 3001:80
+```
+Open `http://localhost:3001` (Default login: `admin` / `prom-operator`).
+
+---
+
+## 10. Local Docker Compose Workflow
+
+To run the full stack locally for development without Kubernetes:
+
+```bash
+# Start all services (PostgreSQL, db-migrate, backend, frontend)
+docker compose up --build
+
+# Stop all services and clean up volumes
+docker compose down -v
 ```
 
 ---
 
-## Summary
+## 11. Security Scanning Commands
 
-Jerney demonstrates a complete DevSecOps lifecycle in a Kubernetes environment: infrastructure provisioning with Terraform, secure containerization with GitHub Actions and GHCR, declarative deployment via Argo CD, and observability and security auditing with Prometheus, Grafana, and Trivy. The repository is structured for repeatability, automation, and production-ready deployment practices.
+Run local security scans before pushing code:
+
+```bash
+# Checkov IaC scan on Terraform
+checkov -d terraform/ --config-file .checkov.yml
+
+# Trivy image vulnerability scan
+trivy image --severity CRITICAL --ignore-unfixed ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
+trivy image --severity CRITICAL --ignore-unfixed ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
+
+# Trivy Kubernetes security scan
+trivy k8s --include-namespaces jerney --report summary
+```
+
+---
+
+## 12. Troubleshooting Guide
+
+| Issue | Root Cause | Solution |
+| :--- | :--- | :--- |
+| `Pod Pending` on `jerney-db` | EBS Volume binding waiting for node or EBS CSI driver | Verify EBS CSI driver is active and StorageClass volumeBindingMode is `WaitForFirstConsumer`. |
+| `db-migrate` initContainer failing | PostgreSQL not yet accepting connections or wrong credentials | Check `jerney-db-secret` credentials; verify `wait-for-db` initContainer completed successfully. |
+| `404 Not Found` on API routes | Nginx proxy configuration mismatch | Ensure `frontend/nginx.conf` proxies `/api/` to `http://jerney-backend:5000`. |
+| `NetworkPolicy` dropping traffic | Pod labels do not match selector | Check `app.kubernetes.io/name` labels on backend and frontend deployments. |
+| Argo CD `OutOfSync` | Git branch or manifest tag updated in repository | Click **Sync** in Argo CD UI or run `kubectl patch app jerney-app -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'`. |
+
+---
+
+## 13. Teardown & Resource Cleanup
+
+To clean up all AWS resources and avoid unnecessary charges:
+
+```bash
+# 1. Delete Kubernetes workloads and Argo CD application
+kubectl delete -f argocd-app.yaml --ignore-not-found
+kubectl delete -f k8s/ --ignore-not-found
+
+# 2. Destroy Terraform infrastructure
+cd terraform
+terraform destroy --auto-approve
+```
+
+---
+
+## 14. Production Readiness & Enterprise Recommendations
+
+For enterprise production deployments, the following architectural enhancements are recommended:
+
+1. **Managed Database (Amazon RDS / Aurora PostgreSQL)**: Replace in-cluster containerized PostgreSQL with Multi-AZ Amazon RDS for automated backups, read replicas, automatic failover, and point-in-time recovery.
+2. **AWS Load Balancer Controller (ALB / Ingress)**: Deploy AWS Load Balancer Controller with an Ingress resource and AWS Certificate Manager (ACM) for HTTPS/TLS termination instead of NodePort.
+3. **External Secrets Operator**: Integrate ESO with AWS Secrets Manager for secret rotation and zero-secret GitOps.
+4. **IRSA (IAM Roles for Service Accounts)**: Assign fine-grained IAM roles directly to Kubernetes service accounts instead of node-level credentials.
+5. **Horizontal Pod Autoscaler (HPA)**: Configure HPA based on CPU/Memory and custom Prometheus metrics for auto-scaling under load.

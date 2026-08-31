@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPost, updatePost } from '../api';
 import { HiArrowLeft } from 'react-icons/hi2';
@@ -16,11 +16,7 @@ function EditPost() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchPost();
-  }, [id]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       const res = await getPost(id);
       setTitle(res.data.title);
@@ -33,7 +29,11 @@ function EditPost() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchPost();
+  }, [fetchPost]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

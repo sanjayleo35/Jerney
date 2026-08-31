@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPost, deletePost } from '../api';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,11 +14,7 @@ function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    fetchPost();
-  }, [id]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       const res = await getPost(id);
       setPost(res.data);
@@ -29,7 +25,11 @@ function PostDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchPost();
+  }, [fetchPost]);
 
   const handleDelete = async () => {
     try {
