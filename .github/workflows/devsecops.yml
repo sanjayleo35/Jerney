@@ -59,6 +59,13 @@ jobs:
             -Dsonar.projectKey=sanjayleo35_Jerney
             -Dsonar.organization=sanjayleo35
 
+      - name: Checkov scan on Terraform
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          config_file: .checkov.yml
+
   build-and-security-scan:
     name: Build and Security Scan
     runs-on: ubuntu-latest
@@ -133,6 +140,6 @@ jobs:
         with:
           repository: .
           token: ${{ secrets.GHCR_PAT }}
-          commit_message: "gitops: update k8s image tags to ${{ github.sha }}"
+          commit_message: "gitops: update k8s image tags to ${{ github.sha }} [skip ci]"
           branch: devops
           file_pattern: k8s/backend-deployment.yaml k8s/frontend-deployment.yaml

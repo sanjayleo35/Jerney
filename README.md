@@ -82,6 +82,7 @@ ghcr.io/sanjayleo35/jerney-frontend:latest
 
 - Trivy for vulnerability and Kubernetes scanning
 - SonarQube for code quality and static analysis
+- Checkov for Infrastructure as Code (IaC) security scanning of Terraform configurations
 - Automated security checks integrated into CI workflow and deployment gatekeeping
 
 ---
@@ -121,15 +122,25 @@ GitHub Actions validates code quality, builds artifacts, and enforces security s
 
 The `k8s/` directory contains the namespace and deployment manifests for the app stack, including:
 
-- Backend deployment
-- Frontend deployment
-- PostgreSQL database deployment
-- Supporting services and configuration
+- Namespace declaration (`jerney`)
+- StorageClass for EBS gp3 volumes (`jerney-ebs-sc`)
+- Database secret template (`secret.yaml`) and example (`secret.example.yaml`)
+- PostgreSQL database deployment and PersistentVolumeClaim
+- Backend deployment and Service
+- Frontend deployment and Service
+- Network policies for least-privilege inter-pod communication
 
-Example deployment namespace:
+To deploy the Kubernetes manifests:
 
 ```bash
-kubectl create namespace jerney
+# 1. Create namespace and storage class
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/storageclass.yaml
+
+# 2. Apply database secret (configure credentials before deploying)
+kubectl apply -f k8s/secret.yaml
+
+# 3. Apply workloads, services, and network policies
 kubectl apply -f k8s/
 ```
 
@@ -138,6 +149,10 @@ kubectl apply -f k8s/
 Argo CD watches the Git repository and reconciles the cluster to the desired state. The application manifest is targeted to the `argocd` namespace and synced from the `devops` branch.
 
 ```bash
+# Create the Argo CD application in the argocd namespace
+kubectl apply -f argocd-app.yaml
+
+# Check status and force sync if needed
 kubectl get application jerney-app -n argocd
 kubectl patch app jerney-app -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
 ```
@@ -151,9 +166,14 @@ Monitoring and scanning are part of the DevSecOps lifecycle:
 - Prometheus + Grafana provide runtime observability
 - Trivy scans Kubernetes manifests and container images for vulnerabilities
 - SonarQube analyzes code quality and maintainability
+- Checkov scans Terraform IaC configurations for security compliance
 
 ```bash
+# Trivy scan on Kubernetes namespace
 trivy k8s --include-namespaces jerney --report summary
+
+# Checkov scan on Terraform IaC
+checkov -d terraform/
 ```
 
 ---
