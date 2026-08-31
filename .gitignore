@@ -16,9 +16,10 @@ terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
 terraform/crash.log
 
-# Docker
+# Docker & AWS CLI
 *.tar
 awscliv2.zip
+aws/
 
 # Editor
 .vscode/

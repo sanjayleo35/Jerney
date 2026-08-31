@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "migrate": "node src/migrate.js",
     "lint": "eslint src/ --ext .js"
   },
   "dependencies": {

@@ -5,15 +5,15 @@ services:
     container_name: jerney-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: jerney_user
-      POSTGRES_PASSWORD: jerney_pass_2026
-      POSTGRES_DB: jerney_db
+      POSTGRES_USER: ${DB_USER:-jerney_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-jerney_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-jerney_db}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jerney_user -d jerney_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-jerney_user} -d ${DB_NAME:-jerney_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,6 +23,25 @@ services:
       - /tmp
       - /run
 
+  # ---- Database Migration ----
+  db-migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jerney-db-migrate
+    command: ["node", "src/migrate.js"]
+    environment:
+      DB_USER: ${DB_USER:-jerney_user}
+      DB_PASSWORD: ${DB_PASSWORD:-jerney_pass_2026}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-jerney_db}
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
   # ---- Backend API ----
   backend:
     build:
@@ -31,17 +50,19 @@ services:
     container_name: jerney-backend
     restart: unless-stopped
     environment:
-      PORT: "5000"
-      DB_USER: jerney_user
-      DB_PASSWORD: jerney_pass_2026
+      PORT: "${PORT:-5000}"
+      DB_USER: ${DB_USER:-jerney_user}
+      DB_PASSWORD: ${DB_PASSWORD:-jerney_pass_2026}
       DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: jerney_db
+      DB_PORT: "${DB_PORT:-5432}"
+      DB_NAME: ${DB_NAME:-jerney_db}
     expose:
       - "5000"
     depends_on:
       db:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     # Security: do not run as root (already in Dockerfile, but enforced here too)
     security_opt:
       - no-new-privileges:true
@@ -54,7 +75,7 @@ services:
     container_name: jerney-frontend
     restart: unless-stopped
     ports:
-      - "80:8080"
+      - "${FRONTEND_PORT:-80}:8080"
     depends_on:
       - backend
     security_opt:

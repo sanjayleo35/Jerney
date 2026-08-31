@@ -73,6 +73,11 @@ sudo nginx -t
 sudo systemctl restart nginx
 sudo systemctl enable nginx
 
+# --- Run database migrations ---
+echo "🗄️  Running database migrations..."
+cd /var/www/jerney/backend
+npm run migrate
+
 # --- Start backend with PM2 ---
 echo "🚀 Starting backend with PM2..."
 cd /var/www/jerney/backend

@@ -20,6 +20,61 @@ spec:
         app.kubernetes.io/component: backend
     spec:
       automountServiceAccountToken: false
+      tolerations:
+        - key: "karpenter.sh/disrupted"
+          operator: "Exists"
+          effect: "NoSchedule"
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for jerney-db:5432..."
+              until nc -z jerney-db 5432; do
+                echo "DB not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "DB is ready!"
+        - name: db-migrate
+          image: ghcr.io/sanjayleo35/jerney-backend:b4a987cde580b39c6b6dce436ac5e8fcc9ac97ae
+          command: ["node", "src/migrate.js"]
+          env:
+            - name: DB_HOST
+              value: jerney-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: jerney-db-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jerney-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: jerney-db-secret
+                  key: POSTGRES_DB
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
       containers:
         - name: backend
           image: ghcr.io/sanjayleo35/jerney-backend:d21b666d639d8d6cc9c59cdd3a023631c5323818
