@@ -26,7 +26,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: frontend
-          image: ghcr.io/sanjayleo35/jerney-frontend:2d4f8cc6c4326355694435be0386bb6479fcca85
+          image: ghcr.io/sanjayleo35/jerney-frontend:7c43b6c6bd8dab2f3aff708655d5f8b407c9310f
           imagePullPolicy: Always
           ports:
             - name: http
