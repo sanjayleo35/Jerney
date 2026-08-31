@@ -62,8 +62,8 @@ flowchart LR
 - Images are built and referenced in lowercase format such as:
 
 ```bash
-ghcr.io/sanjayleo35/jerney-backend:<git-sha>
-ghcr.io/sanjayleo35/jerney-frontend:<git-sha>
+ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
+ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
 ```
 
 ### Continuous Delivery (GitOps)
@@ -107,13 +107,13 @@ This phase includes the VPC, networking, IAM, and EKS cluster setup needed befor
 Build the container images and push them to GHCR using lowercase repository names:
 
 ```bash
-docker build -t ghcr.io/sanjayleo35/jerney-backend:latest ./backend
-docker build -t ghcr.io/sanjayleo35/jerney-frontend:latest ./frontend
+docker build -t ghcr.io/sanjayleo35/jerney-backend:<commit-sha> ./backend
+docker build -t ghcr.io/sanjayleo35/jerney-frontend:<commit-sha> ./frontend
 
 docker login ghcr.io -u sanjayleo35
 
-docker push ghcr.io/sanjayleo35/jerney-backend:latest
-docker push ghcr.io/sanjayleo35/jerney-frontend:latest
+docker push ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
+docker push ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
 ```
 
 GitHub Actions validates code quality, builds artifacts, and enforces security scans before release.
@@ -208,8 +208,8 @@ kubectl get deployment jerney-frontend -n jerney -o jsonpath='{.spec.template.sp
 Expected output style:
 
 ```bash
-ghcr.io/sanjayleo35/jerney-backend:<git-sha>
-ghcr.io/sanjayleo35/jerney-frontend:<git-sha>
+ghcr.io/sanjayleo35/jerney-backend:<commit-sha>
+ghcr.io/sanjayleo35/jerney-frontend:<commit-sha>
 ```
 
 ### Trivy security scan
