@@ -38,7 +38,7 @@ spec:
               done
               echo "DB is ready!"
         - name: db-migrate
-          image: ghcr.io/sanjayleo35/jerney-backend:7c43b6c6bd8dab2f3aff708655d5f8b407c9310f
+          image: ghcr.io/sanjayleo35/jerney-backend:a8eb5e58921bb0d1f7128cfa603e76491f745626
           command: ["node", "src/migrate.js"]
           env:
             - name: DB_HOST
@@ -77,7 +77,7 @@ spec:
                 - ALL
       containers:
         - name: backend
-          image: ghcr.io/sanjayleo35/jerney-backend:7c43b6c6bd8dab2f3aff708655d5f8b407c9310f
+          image: ghcr.io/sanjayleo35/jerney-backend:a8eb5e58921bb0d1f7128cfa603e76491f745626
           imagePullPolicy: Always
           ports:
             - name: http
